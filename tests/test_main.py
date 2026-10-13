@@ -1,4 +1,5 @@
 # Tests main() function
+import json
 import subprocess
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
@@ -327,3 +328,56 @@ def test_main_http_wattnet_errors(get_data):
 
     # CATS should return 1 when we get an JSON error
     assert main(["-c", "ls", "-d", "5"]) == 1
+
+
+@patch("cats.providers.GBCarbonIntensityProvider.get_data")
+def test_reduction_in_output_by_default(mock_carbon_get_data, capsys):
+    mock_carbon_get_data.return_value = _wide_flat_series(
+        "Carbon intensity", "gCO2eq/kWh", 100.0
+    )
+    assert main(["-d", "30", "--loc", "OX1"]) == 0
+    out = capsys.readouterr().out
+    assert "Carbon intensity reduction" in out
+    assert "0.00 gCO2eq/kWh" in out
+
+
+@pytest.mark.parametrize("flag", ["-e", "--hide-reduction", "--exclude-savings"])
+@patch("cats.providers.GBCarbonIntensityProvider.get_data")
+def test_hide_reduction_flag(mock_carbon_get_data, flag, capsys):
+    mock_carbon_get_data.return_value = _wide_flat_series(
+        "Carbon intensity", "gCO2eq/kWh", 100.0
+    )
+    assert main(["-d", "30", "--loc", "OX1", flag]) == 0
+    out = capsys.readouterr().out
+    assert "Carbon intensity reduction" not in out
+
+
+@patch("cats.providers.GBCarbonIntensityProvider.get_data")
+def test_show_reduction_flag(mock_carbon_get_data, capsys):
+    mock_carbon_get_data.return_value = _wide_flat_series(
+        "Carbon intensity", "gCO2eq/kWh", 100.0
+    )
+    assert main(["-d", "30", "--loc", "OX1", "--show-reduction"]) == 0
+    out = capsys.readouterr().out
+    assert "Carbon intensity reduction" in out
+
+
+@patch("cats.providers.GBCarbonIntensityProvider.get_data")
+def test_reduction_in_json_output_by_default(mock_carbon_get_data, capsys):
+    mock_carbon_get_data.return_value = _wide_flat_series(
+        "Carbon intensity", "gCO2eq/kWh", 100.0
+    )
+    assert main(["-d", "30", "--loc", "OX1", "--format", "json"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert "reduction" in data
+    assert data["reduction"] == 0.0
+
+
+@patch("cats.providers.GBCarbonIntensityProvider.get_data")
+def test_hide_reduction_in_json_output(mock_carbon_get_data, capsys):
+    mock_carbon_get_data.return_value = _wide_flat_series(
+        "Carbon intensity", "gCO2eq/kWh", 100.0
+    )
+    assert main(["-d", "30", "--loc", "OX1", "--format", "json", "-e"]) == 0
+    data = json.loads(capsys.readouterr().out)
+    assert "reduction" not in data

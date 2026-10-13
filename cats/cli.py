@@ -404,6 +404,22 @@ def parse_arguments():
         action="store_true",
         help="Disable all terminal output colouring (alias to --no-colour)",
     )
+    reduction_group = parser.add_mutually_exclusive_group()
+    reduction_group.add_argument(
+        "-e",
+        "--hide-reduction",
+        "--exclude-savings",
+        action="store_true",
+        dest="hide_reduction",
+        help="Hide carbon intensity reduction figure from output",
+    )
+    reduction_group.add_argument(
+        "--show-reduction",
+        "--include-savings",
+        action="store_false",
+        dest="hide_reduction",
+        help="Include carbon intensity reduction figure in output (default)",
+    )
     parser.add_argument(
         "--plot",
         help="Create a plot of the forecast and optimised plan for the job. "
@@ -561,6 +577,7 @@ def run_cats(arguments: list[str] | None = None):
         "GBR",
         unit=forecast.unit,
         colour=not colour_output,
+        show_reduction=not args.hide_reduction,
     )
 
     if (

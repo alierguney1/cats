@@ -58,6 +58,7 @@ class Args(Namespace):
     metric: str | None
     max_price: float | None
     max_price_increase_pct: float | None
+    hide_reduction: bool
 
 
 def get_runtime_config(

@@ -70,6 +70,16 @@ OUTPUT_WITH_LONG_METRIC_AND_PRICE = CATSOutput(
     priceUnit="EUR/MWh",
 )
 
+OUTPUT_WITH_REDUCTION = CATSOutput(
+    "Carbon intensity",
+    AverageEstimate(50, now_start, now_end, 0.0, 0.0),
+    AverageEstimate(20, optimal_start, optimal_end, 0.0, 0.0),
+    "OX1",
+    "GBR",
+    "gCO2eq/kWh",
+    show_reduction=True,
+)
+
 
 @pytest.mark.parametrize(
     "output,expected",
@@ -117,6 +127,14 @@ Environmental score at optimal time    = 18.75 -score
 Price if job started now               = 17.49 EUR/MWh
 Price at chosen start time             = 158.37 EUR/MWh (+ 140.88)""",
         ),
+        (
+            OUTPUT_WITH_REDUCTION,
+            """
+Best job start time                 = 2024-03-16 02:00:00
+Carbon intensity if job started now = 50.00 gCO2eq/kWh
+Carbon intensity at optimal time    = 20.00 gCO2eq/kWh
+Carbon intensity reduction          = 30.00 gCO2eq/kWh""",
+        ),
     ],
 )
 def test_string_repr(output, expected):
@@ -137,6 +155,13 @@ def test_string_repr(output, expected):
             OUTPUT_WITH_EMISSION_ESTIMATE,
             """{"colour": false, "countryISO3": "GBR", "emmissionEstimate": [19, 9, 10], "location": "OX1", "metric": "Carbon intensity", """
             """"priceEstimate": null, "priceUnit": null, "unit": "gCO2eq/kWh", """
+            """"valueNow": {"end": "2024-03-15T17:00:00", "end_value": 0.0, "start": "2024-03-15T16:00:00", "start_value": 0.0, "value": 50}, """
+            """"valueOptimal": {"end": "2024-03-16T03:00:00", "end_value": 0.0, "start": "2024-03-16T02:00:00", "start_value": 0.0, "value": 20}}""",
+        ),
+        (
+            OUTPUT_WITH_REDUCTION,
+            """{"colour": false, "countryISO3": "GBR", "emmissionEstimate": null, "location": "OX1", "metric": "Carbon intensity", """
+            """"priceEstimate": null, "priceUnit": null, "reduction": 30, "unit": "gCO2eq/kWh", """
             """"valueNow": {"end": "2024-03-15T17:00:00", "end_value": 0.0, "start": "2024-03-15T16:00:00", "start_value": 0.0, "value": 50}, """
             """"valueOptimal": {"end": "2024-03-16T03:00:00", "end_value": 0.0, "start": "2024-03-16T02:00:00", "start_value": 0.0, "value": 20}}""",
         ),
@@ -163,8 +188,58 @@ def test_output_json(output, expected):
             """"valueNow": {"end": "202403151700", "end_value": 0.0, "start": "202403151600", "start_value": 0.0, "value": 50}, """
             """"valueOptimal": {"end": "202403160300", "end_value": 0.0, "start": "202403160200", "start_value": 0.0, "value": 20}}""",
         ),
+        (
+            OUTPUT_WITH_REDUCTION,
+            """{"colour": false, "countryISO3": "GBR", "emmissionEstimate": null, "location": "OX1", "metric": "Carbon intensity", """
+            """"priceEstimate": null, "priceUnit": null, "reduction": 30, "unit": "gCO2eq/kWh", """
+            """"valueNow": {"end": "202403151700", "end_value": 0.0, "start": "202403151600", "start_value": 0.0, "value": 50}, """
+            """"valueOptimal": {"end": "202403160300", "end_value": 0.0, "start": "202403160200", "start_value": 0.0, "value": 20}}""",
+        ),
     ],
 )
 def test_output_json_with_dateformat(output, expected):
     # use date format expected by at(1)
     assert output.to_json(dateformat="%Y%m%d%H%M", sort_keys=2) == expected
+
+
+def test_reduction_properties():
+    out = CATSOutput(
+        "Carbon intensity",
+        AverageEstimate(141.53, now_start, now_end, 0.0, 0.0),
+        AverageEstimate(120.40, optimal_start, optimal_end, 0.0, 0.0),
+        "RG6",
+        "GBR",
+        "gCO2eq/kWh",
+    )
+    assert out.reduction == 21.13
+    assert out.savings == 21.13
+
+
+def test_string_repr_reduction_colour():
+    out = CATSOutput(
+        "Carbon intensity",
+        AverageEstimate(50, now_start, now_end, 0.0, 0.0),
+        AverageEstimate(20, optimal_start, optimal_end, 0.0, 0.0),
+        "OX1",
+        "GBR",
+        "gCO2eq/kWh",
+        colour=True,
+        show_reduction=True,
+    )
+    s = str(out)
+    assert "\33[32m30.00 gCO2eq/kWh\33[0m" in s
+
+
+def test_string_repr_negative_reduction_colour():
+    out = CATSOutput(
+        "Carbon intensity",
+        AverageEstimate(20, now_start, now_end, 0.0, 0.0),
+        AverageEstimate(50, optimal_start, optimal_end, 0.0, 0.0),
+        "OX1",
+        "GBR",
+        "gCO2eq/kWh",
+        colour=True,
+        show_reduction=True,
+    )
+    s = str(out)
+    assert "\33[31m-30.00 gCO2eq/kWh\33[0m" in s

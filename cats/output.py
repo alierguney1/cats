@@ -27,6 +27,15 @@ class CATSOutput:
     priceEstimate: Optional[Estimates] = None
     priceUnit: Optional[str] = None
     colour: bool = False
+    show_reduction: bool = False
+
+    @property
+    def reduction(self) -> float:
+        return round(self.valueNow.value - self.valueOptimal.value, 2)
+
+    @property
+    def savings(self) -> float:
+        return self.reduction
 
     def __str__(self) -> str:
         if self.colour:
@@ -69,6 +78,16 @@ class CATSOutput:
                 f"{col_ci_opt}{self.valueOptimal.value:.2f} {self.unit}{col_normal}",
             ),
         ]
+
+        if self.show_reduction:
+            reduction = self.reduction
+            col_red = col_ci_opt if reduction >= 0 else col_ci_now
+            lines.append(
+                (
+                    f"{self.metric} reduction",
+                    f"{col_red}{reduction:.2f} {self.unit}{col_normal}",
+                )
+            )
 
         if self.emmissionEstimate:
             lines.append(
@@ -119,6 +138,7 @@ class CATSOutput:
 
     def to_json(self, dateformat: str = "", **kwargs) -> str:
         data = dataclasses.asdict(self)
+        data.pop("show_reduction", None)
         for val in ["valueNow", "valueOptimal"]:
             if dateformat == "":
                 data[val]["start"] = data[val]["start"].isoformat()
@@ -126,5 +146,8 @@ class CATSOutput:
             else:
                 data[val]["start"] = data[val]["start"].strftime(dateformat)
                 data[val]["end"] = data[val]["end"].strftime(dateformat)
+
+        if self.show_reduction:
+            data["reduction"] = self.reduction
 
         return json.dumps(data, **kwargs)

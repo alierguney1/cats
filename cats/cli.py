@@ -246,6 +246,14 @@ def parse_arguments():
         formatter_class=RawDescriptionHelpFormatter,
     )
 
+    parser.add_argument(
+        "-V",
+        "--version",
+        action="version",
+        version=f"%(prog)s {version}",
+        help="Show program's version number and exit.",
+    )
+
     def positive_integer(string: str):
         n = int(string)
         assert n >= 0
@@ -441,7 +449,7 @@ def run_cats(arguments: list[str] | None = None):
     "Main CLI runner, raises exceptions"
     parser = parse_arguments()
     args = cast(Args, parser.parse_args(arguments))
-    colour_output = args.no_colour or args.no_color
+    colour_output = args.no_colour or args.no_color or bool(os.environ.get("NO_COLOR"))
 
     if args.list_providers:
         print_providers()
